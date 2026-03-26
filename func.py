@@ -34,7 +34,7 @@ def clean_df(df: pd.DataFrame, drop_columns: list = ['text', 'date']) -> pd.Data
 
     def final_clean(df: pd.DataFrame) -> pd.DataFrame:
         len_before = len(df)
-        df = df[df['date'].notna()]
+        # df = df[df['date'].notna()]
         df = df[df['content'].notna() & (df['content'].str.strip() != '')]  # catches empty strings too
         df = df.reset_index(drop=True)  # clean up index after drops
         print(f"Rows dropped: {len_before - len(df)}/{len_before} ({(len_before - len(df)) / len_before:.2%})")
@@ -45,7 +45,7 @@ def clean_df(df: pd.DataFrame, drop_columns: list = ['text', 'date']) -> pd.Data
         
     df = add_reporter(df)
     df = add_content(df)
-    df = format_date(df)
+    # df = format_date(df)
     df = drop_text(df, drop_columns)
     df = final_clean(df)
     return df
