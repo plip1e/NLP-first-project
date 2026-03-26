@@ -1,9 +1,6 @@
 import pandas as pd
 
 
-import pandas as pd
-
-
 def clean_df(df: pd.DataFrame, drop_columns: list = ['text']) -> pd.DataFrame:
 
     def _is_valid_reporter(text: str) -> bool:
@@ -60,3 +57,4 @@ def clean_df(df: pd.DataFrame, drop_columns: list = ['text']) -> pd.DataFrame:
     df = final_clean(df)
     df = drop_text(df, drop_columns)
     return df
+
