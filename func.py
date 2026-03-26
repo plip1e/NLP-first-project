@@ -1,51 +1,62 @@
 import pandas as pd
 
 
-def clean_df(df: pd.DataFrame, drop_columns: list = ['text', 'date']) -> pd.DataFrame:
+import pandas as pd
 
-    def add_reporter(df: pd.DataFrame) -> pd.DataFrame: # seporate reporter name from article content
+
+def clean_df(df: pd.DataFrame, drop_columns: list = ['text']) -> pd.DataFrame:
+
+    def _is_valid_reporter(text: str) -> bool:
+        words = text.split()
+        prefix = text.split(' - ')[0]
+        return (
+            ' - ' in text and
+            text.index(' - ') < len(' '.join(words[:5])) and
+            not prefix.startswith('http') and
+            not any(c.isdigit() for c in prefix)
+        )
+
+    def add_reporter(df: pd.DataFrame) -> pd.DataFrame: # separate reporter/agency name from article content
         for index, row in df.iterrows():
             text: str = row['text']
-            words = text.split()
-            # check if ' - ' is within the first 5 words
-            if ' - ' in text and text.index(' - ') < len(' '.join(words[:5])):
+            if _is_valid_reporter(text):
                 df.at[index, 'reporter'] = text.split(' - ')[0]
-            else: df.at[index, 'reporter'] = "Unknown"
+            else:
+                df.at[index, 'reporter'] = "Unknown"
         return df
-    
-    def add_content(df: pd.DataFrame) -> pd.DataFrame: # seporate article content from reporter name
+
+    def add_content(df: pd.DataFrame) -> pd.DataFrame: # separate article content from reporter/agency name
         for index, row in df.iterrows():
             text: str = row['text']
-            words = text.split()
-            # check if ' - ' is within the first 5 words
-            if ' - ' in text and text.index(' - ') < len(' '.join(words[:5])):
-                df.at[index, 'content'] = text.split(' - ')[1]
-            else: df.at[index, 'content'] = text
+            if _is_valid_reporter(text):
+                df.at[index, 'content'] = ' - '.join(text.split(' - ')[1:])
+            else:
+                df.at[index, 'content'] = text
         return df
-    
-    def format_date(df: pd.DataFrame) -> pd.DataFrame: # format the date column from (January 15 2023) to datetime format and split to 3 columns (year, month, day)
-        mask = pd.to_datetime(df['date'], format='mixed', errors='coerce').isna()
-        print(df[mask]['date'].value_counts().head(20))
-        df['date'] = pd.to_datetime(df['date'], format='%B %d, %Y', errors='coerce') # convert to datetime format, if error occurs, set to NaT
-        df['year'] = df['date'].dt.year
-        df['month'] = df['date'].dt.month
-        df['day'] = df['date'].dt.day
+
+    def format_date(df: pd.DataFrame) -> pd.DataFrame: # format date column and split into year, month, day
+        df['date'] = pd.to_datetime(df['date'], format='mixed', errors='coerce')
+        df['year']  = df['date'].dt.year.astype('Int64')
+        df['month'] = df['date'].dt.month.astype('Int64')
+        df['day']   = df['date'].dt.day.astype('Int64')
         return df
+
+    def drop_text(df: pd.DataFrame, drop_columns: list) -> pd.DataFrame:
+        return df.drop(columns=drop_columns, inplace=False) # drop the original 'text' column
 
     def final_clean(df: pd.DataFrame) -> pd.DataFrame:
         len_before = len(df)
-        # df = df[df['date'].notna()]
-        df = df[df['content'].notna() & (df['content'].str.strip() != '')]  # catches empty strings too
-        df = df.reset_index(drop=True)  # clean up index after drops
-        print(f"Rows dropped: {len_before - len(df)}/{len_before} ({(len_before - len(df)) / len_before:.2%})")
+        df = df[df['date'].notna()]                                          # drop rows with unparseable date
+        df = df[df['content'].notna() & (df['content'].str.strip() != '')]  # drop rows with missing/empty content
+        df = df[~df['content'].str.startswith(('http://', 'https://'))]     # drop rows where content is just a URL
+        df = df.reset_index(drop=True)
+        df.drop(columns='date')
+        print(f"Rows dropped: {len_before - len(df)}")
         return df
-    
-    def drop_text(df: pd.DataFrame, drop_columns: list) -> pd.DataFrame: 
-        return df.drop(columns=drop_columns, inplace=False) # drop the original 'text' column
-        
+
     df = add_reporter(df)
     df = add_content(df)
-    # df = format_date(df)
-    df = drop_text(df, drop_columns)
+    df = format_date(df)
     df = final_clean(df)
+    df = drop_text(df, drop_columns)
     return df
