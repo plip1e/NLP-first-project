@@ -1,0 +1,7 @@
+# ignore only contents of local-data folder, not the folder itself
+local-data/*
+# standard gitignore for python projects
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
